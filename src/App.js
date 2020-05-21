@@ -1,24 +1,13 @@
 import React, { Component } from 'react';
 import './App.css';
 
-const list = [
-  {
-    title: 'React',
-    url: 'https://reactjs.org',
-    author: 'Jordan Walke',
-    num_coments: 3,
-    points: 4,
-    objectID: 0,
-  },
-  {
-    title: 'Redux',
-    url: 'https://redux.js.org',
-    author: 'Dan Abramov, Andrew Clark',
-    num_coments: 2,
-    points: 5,
-    objectID: 1,
-  }
-];
+const DEFAULT_QUERY = 'redux';
+const PATH_BASE = 'https://hn.algolia.com/api/v1';
+const PATH_SEARCH = '/search';
+const PARAM_SEARCH = 'query=';
+
+const url = `${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${DEFAULT_QUERY}`;
+console.log(url);
 
 const isSearched = searchTerm => item =>
     item.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -29,18 +18,21 @@ class App extends Component {
     super(props);
 
     this.state = {
-      list,
-      searchTerm: '',
+      result: null,
+      searchTerm: DEFAULT_QUERY,
     }
 
     this.onDismiss = this.onDismiss.bind(this);
     this.onSearchChange = this.onSearchChange.bind(this);
+    this.setSearchTopStories = this.setSearchTopStories.bind(this);
   }
 
   onDismiss(id) {
     const isNotId = item => item.objectID !== id;
-    const updatedList = this.state.list.filter(isNotId);
-    this.setState({ list: updatedList });
+    const updatedHits = this.state.result.hits.filter(isNotId);
+    this.setState({ 
+      result: { ...this.state.result, hits: updatedHits } 
+    });
   }
 
   onSearchChange(event) {
@@ -49,8 +41,24 @@ class App extends Component {
     });
   }
 
+  setSearchTopStories(result) {
+    this.setState({ result });
+  }
+
+  componentDidMount() {
+    const { searchTerm } = this.state;
+
+    fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
+      .then(response => response.json())
+      .then(result => this.setSearchTopStories(result))
+      .catch(error => error);
+  }
+
   render() {
-    const { list, searchTerm } = this.state;
+    const { result, searchTerm } = this.state;
+
+    if(!result) { return null; }
+
     return (
       <div className="page">
         <div className="interactions">
@@ -62,7 +70,7 @@ class App extends Component {
           </Search>
         </div>
         <Table 
-          list={list}
+          list={result.hits}
           pattern={searchTerm}
           onDismiss={this.onDismiss}
         />
